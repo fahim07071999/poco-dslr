@@ -33,10 +33,6 @@ import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * Custom TextureView that automatically adjusts its aspect ratio
- * to prevent any stretching or preview distortion on Poco M6 Pro.
- */
 class AutoFitTextureView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -76,10 +72,8 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "PocoDSLRStudio"
         private const val REQUEST_CAMERA_PERMISSION = 200
-
-        // Cloud AI Upscaling API Configuration
         private const val CLOUD_AI_API_URL = "https://api.stability.ai/v2beta/stable-image/upscale/conservative"
-        private const val CLOUD_AI_API_KEY = "" // Paste your API key here when ready
+        private const val CLOUD_AI_API_KEY = ""
 
         private val ORIENTATIONS = SparseIntArray().apply {
             append(Surface.ROTATION_0, 90)
@@ -89,7 +83,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // UI Elements
     private lateinit var viewfinderContainer: FrameLayout
     private lateinit var textureView: AutoFitTextureView
     private lateinit var shutterFlashOverlay: View
@@ -99,7 +92,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnCapture: Button
     private lateinit var progressBar: ProgressBar
 
-    // Camera2 API Variables
     private var cameraId: String = "0"
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
@@ -107,21 +99,18 @@ class MainActivity : AppCompatActivity() {
     private var largestJpegSize: Size = Size(4080, 3060)
     private var imageReader: ImageReader? = null
 
-    // Background Threads & Executors
     private var backgroundThread: HandlerThread? = null
     private var backgroundHandler: Handler? = null
     private val aiProcessingExecutor = Executors.newFixedThreadPool(2)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val mediaSound = MediaActionSound()
 
-    // State Controls
     enum class TorchState { OFF, ON, AUTO }
     enum class BeastMode { DAY_BEAST, PRO_NIGHT_BEAST }
 
     private var currentTorchState = TorchState.OFF
     private var currentBeastMode = BeastMode.DAY_BEAST
 
-    // Multi-frame collection buffer for Night Mode
     private val burstFramesBuffer = mutableListOf<ByteArray>()
     private var expectedFramesCount = 1
 
@@ -129,7 +118,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Initialize UI Components
         viewfinderContainer = findViewById(R.id.viewfinderContainer)
         shutterFlashOverlay = findViewById(R.id.shutterFlashOverlay)
         btnTorch = findViewById(R.id.btnTorch)
@@ -138,7 +126,6 @@ class MainActivity : AppCompatActivity() {
         btnCapture = findViewById(R.id.btnCapture)
         progressBar = findViewById(R.id.progressBar)
 
-        // Dynamically add AutoFitTextureView inside container for 0% distortion
         textureView = AutoFitTextureView(this)
         val params = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -149,12 +136,10 @@ class MainActivity : AppCompatActivity() {
         viewfinderContainer.addView(textureView)
 
         mediaSound.load(MediaActionSound.SHUTTER_CLICK)
-
         setupListeners()
     }
 
     private fun setupListeners() {
-        // 1. Universal Torch Control Switch
         btnTorch.setOnClickListener {
             vibrateLight()
             currentTorchState = when (currentTorchState) {
@@ -166,7 +151,6 @@ class MainActivity : AppCompatActivity() {
             updatePreviewSession()
         }
 
-        // 2. Day Beast vs Pro Night Beast Mode Switch
         btnModeSwitch.setOnClickListener {
             vibrateLight()
             if (currentBeastMode == BeastMode.DAY_BEAST) {
@@ -183,7 +167,6 @@ class MainActivity : AppCompatActivity() {
             updatePreviewSession()
         }
 
-        // 3. Shutter Capture Button
         btnCapture.setOnClickListener {
             triggerShutterFeedback()
             takeComputationalPhoto()
