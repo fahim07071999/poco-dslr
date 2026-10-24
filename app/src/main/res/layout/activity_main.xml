@@ -5,12 +5,14 @@
     android:background="#000000"
     android:keepScreenOn="true">
 
+    <!-- Container for Zero-Distortion AutoFitTextureView -->
     <FrameLayout
         android:id="@+id/viewfinderContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_centerInParent="true" />
 
+    <!-- White Flash Overlay for Instant Shutter Feedback -->
     <View
         android:id="@+id/shutterFlashOverlay"
         android:layout_width="match_parent"
@@ -18,6 +20,7 @@
         android:background="#FFFFFF"
         android:visibility="gone" />
 
+    <!-- TOP BAR: Torch Selector & Beast Mode Switch -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
@@ -29,6 +32,7 @@
         android:paddingHorizontal="16dp"
         android:paddingVertical="14dp">
 
+        <!-- Universal Torch Button (Cycles: OFF -> ON -> AUTO) -->
         <Button
             android:id="@+id/btnTorch"
             android:layout_width="0dp"
@@ -41,6 +45,7 @@
             android:textSize="12sp"
             android:textStyle="bold" />
 
+        <!-- Beast Mode Toggle (Cycles: DAY BEAST <-> PRO NIGHT BEAST) -->
         <Button
             android:id="@+id/btnModeSwitch"
             android:layout_width="0dp"
@@ -54,6 +59,7 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- STATUS PILL: Displays Live Pipeline & 30s Cloud AI Progress -->
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
@@ -69,6 +75,7 @@
         android:textSize="12sp"
         android:textStyle="bold" />
 
+    <!-- BOTTOM BAR: Shutter Button & Processing Indicator -->
     <RelativeLayout
         android:id="@+id/bottomBar"
         android:layout_width="match_parent"
@@ -77,6 +84,7 @@
         android:background="#99000000"
         android:padding="16dp">
 
+        <!-- Main Shutter Button -->
         <Button
             android:id="@+id/btnCapture"
             android:layout_width="84dp"
@@ -88,6 +96,7 @@
             android:textSize="14sp"
             android:textStyle="bold" />
 
+        <!-- Background Cloud AI Spinner -->
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="40dp"
@@ -98,4 +107,5 @@
             android:indeterminateTint="#00E676"
             android:visibility="gone" />
     </RelativeLayout>
+
 </RelativeLayout>
