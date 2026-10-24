@@ -1,4 +1,4 @@
-package com.pocodslr.camera
+package com.fahim.pocodslr
 
 import android.Manifest
 import android.content.ContentValues
