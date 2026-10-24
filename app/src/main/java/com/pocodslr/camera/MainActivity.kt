@@ -382,7 +382,7 @@ class MainActivity : Activity(), SensorEventListener {
                 if (workingBmp != baseBmp) baseBmp.recycle()
 
                 val workingBright = cropAndSupersample(brightBmp, targetW, targetH)
-                brightBmp.recycle()
+                if (workingBright != brightBmp) brightBmp.recycle()
 
                 // 3. Dual-Exposure Fusion + Argon Scene Color Grading + Optical Bokeh
                 runOnUiThread { statusLabel.text = "Stage 2/3: Argon Color Science + 3D Bokeh + Micro-Contrast..." }
