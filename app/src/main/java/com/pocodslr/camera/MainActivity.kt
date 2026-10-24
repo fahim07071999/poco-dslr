@@ -1,4 +1,4 @@
-package com.fahim.pocodslr
+package com.pocodslr.camera
 
 import android.Manifest
 import android.content.ContentValues
@@ -172,12 +172,12 @@ class MainActivity : AppCompatActivity() {
             if (currentBeastMode == BeastMode.DAY_BEAST) {
                 currentBeastMode = BeastMode.PRO_NIGHT_BEAST
                 btnModeSwitch.text = "MODE: NIGHT BEAST"
-                btnModeSwitch.setBackgroundColor(Color.parseColor("#311B92")) // Deep Night Indigo
+                btnModeSwitch.setBackgroundColor(Color.parseColor("#311B92"))
                 updateStatus("NIGHT BEAST • MULTI-FRAME + 30s AI", "#BB86FC")
             } else {
                 currentBeastMode = BeastMode.DAY_BEAST
                 btnModeSwitch.text = "MODE: DAY BEAST"
-                btnModeSwitch.setBackgroundColor(Color.parseColor("#1B5E20")) // Crisp Day Green
+                btnModeSwitch.setBackgroundColor(Color.parseColor("#1B5E20"))
                 updateStatus("DAY BEAST • 15-30s AI UPSCALE READY", "#00E676")
             }
             updatePreviewSession()
