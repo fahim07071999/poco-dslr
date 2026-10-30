@@ -2,7 +2,7 @@ name: Build Poco DSLR APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "samsung-camera-ui-preview-fix" ]
   workflow_dispatch:
 
 jobs:
