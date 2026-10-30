@@ -48,7 +48,6 @@ class MainActivity : Activity(), SensorEventListener {
     private var prime50mmCrop = false
     private var dslrBokehAndHdr = true
     private var isCapturing = false
-    private var sensorOrientation = 90
     private val previewBufferSize = Size(1920, 1440)
 
     private val burstFrames = mutableListOf<ByteArray>()
@@ -273,32 +272,18 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    // Keep the 4:3 camera stream proportional; rotate it for the device display and center-crop.
+    // Preserve the camera's existing orientation; only correct aspect ratio and crop.
     private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
         if (viewWidth <= 0 || viewHeight <= 0) return
 
-        val displayDegrees = when (windowManager.defaultDisplay.rotation) {
-            Surface.ROTATION_0 -> 0
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> 0
-        }
-        val rotation = (sensorOrientation - displayDegrees + 360) % 360
-        val rotatedWidth = if (rotation == 90 || rotation == 270) previewBufferSize.height else previewBufferSize.width
-        val rotatedHeight = if (rotation == 90 || rotation == 270) previewBufferSize.width else previewBufferSize.height
+        val bufferWidth = previewBufferSize.width.toFloat()
+        val bufferHeight = previewBufferSize.height.toFloat()
+        val scale = maxOf(viewWidth / bufferWidth, viewHeight / bufferHeight)
+        val scaleX = scale * bufferWidth / viewWidth
+        val scaleY = scale * bufferHeight / viewHeight
 
         val matrix = Matrix()
-        val centerX = viewWidth / 2f
-        val centerY = viewHeight / 2f
-        matrix.setRotate(rotation.toFloat(), centerX, centerY)
-
-        // TextureView initially fills its view bounds. Correct that stretch, then crop equally
-        // on the longer axis so circles stay circular and the preview fills the screen.
-        val scale = maxOf(viewWidth.toFloat() / rotatedWidth, viewHeight.toFloat() / rotatedHeight)
-        val scaleX = scale * rotatedWidth / viewWidth
-        val scaleY = scale * rotatedHeight / viewHeight
-        matrix.postScale(scaleX, scaleY, centerX, centerY)
+        matrix.setScale(scaleX, scaleY, viewWidth / 2f, viewHeight / 2f)
         textureView.setTransform(matrix)
     }
 
