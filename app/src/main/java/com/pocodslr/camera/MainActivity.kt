@@ -153,6 +153,23 @@ class MainActivity : Activity(), SensorEventListener {
         ))
 
         setContentView(root)
+
+        ratioBtn = createToggleBtn("IG 4:5 (1080x1350)") {
+            outputMode = (outputMode + 1) % 3
+            ratioBtn.text = when (outputMode) {
+                0 -> "IG 4:5 (1080x1350)"
+                1 -> "SNAP 9:16 (1080x1920)"
+                else -> "FULL 12.5MP MASTER"
+            }
+        }
+        lensBtn = createToggleBtn("Lens: 26mm Wide") {
+            prime50mmCrop = !prime50mmCrop
+            lensBtn.text = if (prime50mmCrop) "Lens: 50mm Sweet-Spot" else "Lens: 26mm Wide"
+        }
+        bokehBtn = createToggleBtn("HDR + Bokeh: ON") {
+            dslrBokehAndHdr = !dslrBokehAndHdr
+            bokehBtn.text = if (dslrBokehAndHdr) "HDR + Bokeh: ON" else "HDR + Bokeh: OFF"
+        }
     }
 
     private fun roundedControl(color: Int, radiusDp: Int): GradientDrawable =
@@ -345,7 +362,7 @@ class MainActivity : Activity(), SensorEventListener {
             viewWidth.toFloat() / 1440f
         )
         matrix.postScale(scale, scale, centerX, centerY)
-        matrix.postRotate(0f, centerX, centerY)
+        matrix.postRotate(90f, centerX, centerY)
         textureView.setTransform(matrix)
     }
 
