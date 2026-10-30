@@ -2,10 +2,12 @@ package com.pocodslr.camera
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
+import android.graphics.drawable.GradientDrawable
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -33,6 +35,7 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var ratioBtn: Button
     private lateinit var lensBtn: Button
     private lateinit var bokehBtn: Button
+    private lateinit var settingsBtn: Button
 
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
@@ -64,100 +67,129 @@ class MainActivity : Activity(), SensorEventListener {
         textureView = TextureView(this)
         root.addView(textureView, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
+
+        // Samsung-inspired minimal camera HUD: settings above, shutter below.
+        val topBar = FrameLayout(this).apply {
+            setPadding(24, 36, 24, 12)
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+        val title = TextView(this).apply {
+            text = "POCO DSLR"
+            textSize = 17f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            gravity = Gravity.CENTER
+            letterSpacing = 0.08f
+        }
+        topBar.addView(title, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.CENTER
         ))
 
-        // Top HUD Bar
-        val topBar = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#99000000"))
-            setPadding(32, 48, 32, 24)
-        }
-
-        val title = TextView(this).apply {
-            text = "POCO M6 PRO • ARGON DSLR ENGINE"
-            textSize = 14f
-            setTextColor(Color.parseColor("#00E676"))
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-        }
-
-        statusLabel = TextView(this).apply {
-            text = "Sensor: 100% Uncompressed | Gyro Gate: Ready"
-            textSize = 12f
+        settingsBtn = Button(this).apply {
+            text = "⚙"
+            textSize = 23f
             setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 0)
+            background = roundedControl(Color.parseColor("#99000000"), 48)
+            setPadding(0, 0, 0, 0)
+            minWidth = 52
+            minimumWidth = 52
+            minHeight = 52
+            minimumHeight = 52
+            setOnClickListener { showCameraSettings() }
         }
-
-        topBar.addView(title)
-        topBar.addView(statusLabel)
+        topBar.addView(settingsBtn, FrameLayout.LayoutParams(56, 56, Gravity.END or Gravity.CENTER_VERTICAL))
         root.addView(topBar, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            112,
             Gravity.TOP
         ))
 
-        // Bottom Controls Bar
-        val bottomBar = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#B3000000"))
-            setPadding(24, 24, 24, 48)
+        statusLabel = TextView(this).apply {
+            text = "Camera ready"
+            textSize = 12f
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
+            setPadding(20, 10, 20, 10)
+            background = roundedControl(Color.parseColor("#88000000"), 24)
         }
+        root.addView(statusLabel, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
+        ).apply { bottomMargin = 150 })
 
-        val togglesRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 24)
+        val bottomBar = FrameLayout(this).apply {
+            setPadding(24, 20, 24, 42)
+            setBackgroundColor(Color.parseColor("#66000000"))
         }
-
-        ratioBtn = createToggleBtn("IG 4:5 (1080x1350)") {
-            outputMode = (outputMode + 1) % 3
-            ratioBtn.text = when (outputMode) {
-                0 -> "IG 4:5 (1080x1350)"
-                1 -> "SNAP 9:16 (1080x1920)"
-                else -> "FULL 12.5MP MASTER"
-            }
-        }
-
-        lensBtn = createToggleBtn("Lens: 26mm Wide") {
-            prime50mmCrop = !prime50mmCrop
-            lensBtn.text = if (prime50mmCrop) "Lens: 50mm Sweet-Spot" else "Lens: 26mm Wide"
-        }
-
-        bokehBtn = createToggleBtn("HDR + Bokeh: ON") {
-            dslrBokehAndHdr = !dslrBokehAndHdr
-            bokehBtn.text = if (dslrBokehAndHdr) "HDR + Bokeh: ON" else "HDR + Bokeh: OFF"
-        }
-
-        togglesRow.addView(ratioBtn)
-        togglesRow.addView(lensBtn)
-        togglesRow.addView(bokehBtn)
-
         captureBtn = Button(this).apply {
-            text = "SHUTTER (DUAL-EXPOSURE DSLR)"
-            textSize = 15f
+            text = "●"
+            textSize = 34f
+            setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.BLACK)
-            setBackgroundColor(Color.parseColor("#00E676"))
-            setPadding(48, 28, 48, 28)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.WHITE)
+                setStroke(5, Color.parseColor("#DDDDDD"))
+            }
+            setPadding(0, 0, 0, 0)
+            minWidth = 76
+            minimumWidth = 76
+            minHeight = 76
+            minimumHeight = 76
             setOnClickListener {
                 if (!isCapturing) triggerGyroGatedCapture()
             }
         }
-
-        bottomBar.addView(togglesRow)
-        bottomBar.addView(captureBtn)
-
+        bottomBar.addView(captureBtn, FrameLayout.LayoutParams(82, 82, Gravity.CENTER))
         root.addView(bottomBar, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            132,
             Gravity.BOTTOM
         ))
 
         setContentView(root)
+    }
+
+    private fun roundedControl(color: Int, radiusDp: Int): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = radiusDp.toFloat()
+        }
+
+    private fun showCameraSettings() {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(28, 12, 28, 12)
+            setBackgroundColor(Color.parseColor("#171717"))
+        }
+
+        fun addSettingButton(button: Button) {
+            button.textSize = 14f
+            button.setTextColor(Color.WHITE)
+            button.background = roundedControl(Color.parseColor("#303030"), 16)
+            button.setPadding(18, 18, 18, 18)
+            val params = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            params.setMargins(0, 8, 0, 8)
+            panel.addView(button, params)
+        }
+
+        addSettingButton(ratioBtn)
+        addSettingButton(lensBtn)
+        addSettingButton(bokehBtn)
+
+        AlertDialog.Builder(this)
+            .setTitle("Camera settings")
+            .setView(panel)
+            .setPositiveButton("Done", null)
+            .show()
     }
 
     private fun createToggleBtn(label: String, onClick: () -> Unit): Button {
@@ -185,7 +217,7 @@ class MainActivity : Activity(), SensorEventListener {
         } else {
             textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                 override fun onSurfaceTextureAvailable(s: SurfaceTexture, w: Int, h: Int) = openMaxHardwareCamera()
-                override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
+                override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) { configurePreviewTransform(w, h) }
                 override fun onSurfaceTextureDestroyed(s: SurfaceTexture): Boolean = true
                 override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
             }
@@ -275,6 +307,7 @@ class MainActivity : Activity(), SensorEventListener {
         val device = cameraDevice ?: return
         val surfaceTexture = textureView.surfaceTexture ?: return
         surfaceTexture.setDefaultBufferSize(1920, 1440)
+        configurePreviewTransform(textureView.width, textureView.height)
         val previewSurface = Surface(surfaceTexture)
         val readerSurface = imageReader?.surface ?: return
 
@@ -291,6 +324,29 @@ class MainActivity : Activity(), SensorEventListener {
             }
             override fun onConfigureFailed(session: CameraCaptureSession) {}
         }, backgroundHandler)
+    }
+
+    // Keep the 4:3 camera stream proportional. Rotate the sensor buffer for portrait
+    // display, then center-crop; never stretch the preview to fill the screen.
+    private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
+        if (viewWidth <= 0 || viewHeight <= 0) return
+        val matrix = Matrix()
+        val viewRect = RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
+        val bufferRect = RectF(
+            0f, 0f,
+            1440f, 1920f
+        )
+        val centerX = viewRect.centerX()
+        val centerY = viewRect.centerY()
+        bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
+        matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
+        val scale = maxOf(
+            viewHeight.toFloat() / 1920f,
+            viewWidth.toFloat() / 1440f
+        )
+        matrix.postScale(scale, scale, centerX, centerY)
+        matrix.postRotate(0f, centerX, centerY)
+        textureView.setTransform(matrix)
     }
 
     private fun triggerGyroGatedCapture() {
