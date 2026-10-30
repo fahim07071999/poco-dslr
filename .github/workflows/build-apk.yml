@@ -2,7 +2,7 @@ name: Build Poco DSLR APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "preview-fix-only" ]
   workflow_dispatch:
 
 jobs:
