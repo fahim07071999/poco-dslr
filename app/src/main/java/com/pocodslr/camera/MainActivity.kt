@@ -278,12 +278,12 @@ class MainActivity : Activity(), SensorEventListener {
 
         val bufferWidth = previewBufferSize.width.toFloat()
         val bufferHeight = previewBufferSize.height.toFloat()
+        // Use one uniform scale factor so people and objects keep their natural proportions.
+        // Center-crop the preview; never scale X and Y independently.
         val scale = maxOf(viewWidth / bufferWidth, viewHeight / bufferHeight)
-        val scaleX = scale * bufferWidth / viewWidth
-        val scaleY = scale * bufferHeight / viewHeight
 
         val matrix = Matrix()
-        matrix.setScale(scaleX, scaleY, viewWidth / 2f, viewHeight / 2f)
+        matrix.setScale(scale, scale, viewWidth / 2f, viewHeight / 2f)
         textureView.setTransform(matrix)
     }
 
