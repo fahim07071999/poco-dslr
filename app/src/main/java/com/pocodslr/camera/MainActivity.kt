@@ -33,12 +33,16 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var ratioBtn: Button
     private lateinit var lensBtn: Button
     private lateinit var bokehBtn: Button
+    private lateinit var torchBtn: Button
 
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
+    private var previewRequestBuilder: CaptureRequest.Builder? = null
     private var imageReader: ImageReader? = null
     private var backgroundThread: HandlerThread? = null
     private var backgroundHandler: Handler? = null
+    private var flashAvailable = false
+    private var isTorchOn = false
 
     private lateinit var sensorManager: SensorManager
     @Volatile private var currentGyroShake = 0f
@@ -133,9 +137,20 @@ class MainActivity : Activity(), SensorEventListener {
             bokehBtn.text = if (dslrBokehAndHdr) "HDR + Bokeh: ON" else "HDR + Bokeh: OFF"
         }
 
+        torchBtn = createToggleBtn("Torch: OFF") {
+            if (!flashAvailable) {
+                Toast.makeText(this, "Torch is not available on this camera", Toast.LENGTH_SHORT).show()
+            } else {
+                isTorchOn = !isTorchOn
+                updateTorchButton()
+                updatePreviewTorch()
+            }
+        }
+
         togglesRow.addView(ratioBtn)
         togglesRow.addView(lensBtn)
         togglesRow.addView(bokehBtn)
+        togglesRow.addView(torchBtn)
 
         captureBtn = Button(this).apply {
             text = "SHUTTER (DUAL-EXPOSURE DSLR)"
@@ -175,6 +190,30 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    private fun updateTorchButton() {
+        torchBtn.text = if (isTorchOn) "Torch: ON" else "Torch: OFF"
+        torchBtn.isEnabled = flashAvailable
+        torchBtn.alpha = if (flashAvailable) 1f else 0.5f
+    }
+
+    private fun updatePreviewTorch() {
+        val session = captureSession ?: return
+        val builder = previewRequestBuilder ?: return
+        try {
+            builder.set(
+                CaptureRequest.FLASH_MODE,
+                if (isTorchOn) CaptureRequest.FLASH_MODE_TORCH else CaptureRequest.FLASH_MODE_OFF
+            )
+            session.setRepeatingRequest(builder.build(), null, backgroundHandler)
+        } catch (e: CameraAccessException) {
+            runOnUiThread {
+                isTorchOn = false
+                updateTorchButton()
+                statusLabel.text = "Torch error: ${e.message}"
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         startBackgroundThread()
@@ -194,6 +233,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     override fun onPause() {
+        isTorchOn = false
         closeCamera()
         sensorManager.unregisterListener(this)
         stopBackgroundThread()
@@ -226,6 +266,7 @@ class MainActivity : Activity(), SensorEventListener {
                 val facing = chars.get(CameraCharacteristics.LENS_FACING)
                 if (facing == CameraCharacteristics.LENS_FACING_BACK) {
                     backCameraId = id
+                    flashAvailable = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
                     val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
                     val sizes = map?.getOutputSizes(ImageFormat.JPEG)
                     if (!sizes.isNullOrEmpty()) {
@@ -234,6 +275,7 @@ class MainActivity : Activity(), SensorEventListener {
                     break
                 }
             }
+            runOnUiThread { updateTorchButton() }
 
             runOnUiThread {
                 statusLabel.text = "Snapdragon Native Stream: ${maxSize.width}x${maxSize.height} (100% RAW-JPEG)"
@@ -299,7 +341,9 @@ class MainActivity : Activity(), SensorEventListener {
             addTarget(previewSurface)
             set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
             set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+            set(CaptureRequest.FLASH_MODE, if (isTorchOn) CaptureRequest.FLASH_MODE_TORCH else CaptureRequest.FLASH_MODE_OFF)
         }
+        previewRequestBuilder = previewReq
 
         device.createCaptureSession(listOf(previewSurface, readerSurface), object : CameraCaptureSession.StateCallback() {
             override fun onConfigured(session: CameraCaptureSession) {
@@ -605,6 +649,7 @@ class MainActivity : Activity(), SensorEventListener {
     private fun closeCamera() {
         captureSession?.close()
         captureSession = null
+        previewRequestBuilder = null
         cameraDevice?.close()
         cameraDevice = null
         imageReader?.close()
