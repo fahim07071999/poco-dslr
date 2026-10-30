@@ -724,7 +724,9 @@ class MainActivity : AppCompatActivity() {
         if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
             matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
-            val scale = max(
+            // Fit the complete sensor frame inside the preview bounds.
+            // Using the smaller scale preserves the source aspect ratio without cropping.
+            val scale = min(
                 viewHeight.toFloat() / previewSize.height,
                 viewWidth.toFloat() / previewSize.width
             )
