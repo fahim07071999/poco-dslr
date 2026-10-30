@@ -48,6 +48,8 @@ class MainActivity : Activity(), SensorEventListener {
     private var prime50mmCrop = false
     private var dslrBokehAndHdr = true
     private var isCapturing = false
+    private var sensorOrientation = 90
+    private val previewBufferSize = Size(1920, 1440)
 
     private val burstFrames = mutableListOf<ByteArray>()
 
@@ -184,8 +186,8 @@ class MainActivity : Activity(), SensorEventListener {
             openMaxHardwareCamera()
         } else {
             textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                override fun onSurfaceTextureAvailable(s: SurfaceTexture, w: Int, h: Int) = openMaxHardwareCamera()
-                override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
+                override fun onSurfaceTextureAvailable(s: SurfaceTexture, w: Int, h: Int) { configurePreviewTransform(w, h); openMaxHardwareCamera() }
+                override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) { configurePreviewTransform(w, h) }
                 override fun onSurfaceTextureDestroyed(s: SurfaceTexture): Boolean = true
                 override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
             }
@@ -271,10 +273,40 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    // Keep the 4:3 camera stream proportional; rotate it for the device display and center-crop.
+    private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
+        if (viewWidth <= 0 || viewHeight <= 0) return
+
+        val displayDegrees = when (windowManager.defaultDisplay.rotation) {
+            Surface.ROTATION_0 -> 0
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        val rotation = (sensorOrientation - displayDegrees + 360) % 360
+        val rotatedWidth = if (rotation == 90 || rotation == 270) previewBufferSize.height else previewBufferSize.width
+        val rotatedHeight = if (rotation == 90 || rotation == 270) previewBufferSize.width else previewBufferSize.height
+
+        val matrix = Matrix()
+        val centerX = viewWidth / 2f
+        val centerY = viewHeight / 2f
+        matrix.setRotate(rotation.toFloat(), centerX, centerY)
+
+        // TextureView initially fills its view bounds. Correct that stretch, then crop equally
+        // on the longer axis so circles stay circular and the preview fills the screen.
+        val scale = maxOf(viewWidth.toFloat() / rotatedWidth, viewHeight.toFloat() / rotatedHeight)
+        val scaleX = scale * rotatedWidth / viewWidth
+        val scaleY = scale * rotatedHeight / viewHeight
+        matrix.postScale(scaleX, scaleY, centerX, centerY)
+        textureView.setTransform(matrix)
+    }
+
     private fun startPreviewSession() {
         val device = cameraDevice ?: return
         val surfaceTexture = textureView.surfaceTexture ?: return
-        surfaceTexture.setDefaultBufferSize(1920, 1440)
+        surfaceTexture.setDefaultBufferSize(previewBufferSize.width, previewBufferSize.height)
+        configurePreviewTransform(textureView.width, textureView.height)
         val previewSurface = Surface(surfaceTexture)
         val readerSurface = imageReader?.surface ?: return
 
