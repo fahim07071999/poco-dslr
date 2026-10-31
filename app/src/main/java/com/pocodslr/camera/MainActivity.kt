@@ -327,9 +327,9 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    // Map the camera buffer into the TextureView using the actual sensor/display
-    // relative rotation. A single uniform scale preserves object proportions.
-    // Any excess is center-cropped; X and Y are never scaled independently.
+    // Keep the preview upright and preserve the camera buffer's aspect ratio.
+    // TextureView receives the sensor-oriented buffer; rotate it into display
+    // orientation, then use one uniform center-crop scale (never X/Y stretch).
     private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
         if (viewWidth <= 0 || viewHeight <= 0) return
 
@@ -340,23 +340,24 @@ class MainActivity : Activity(), SensorEventListener {
             Surface.ROTATION_270 -> 270
             else -> 0
         }
+
+        // Rear-camera orientation compensation for the current display rotation.
         val relativeRotation = (backSensorOrientation - displayDegrees + 360) % 360
         val swapsDimensions = relativeRotation == 90 || relativeRotation == 270
 
-        val bufferWidth = previewBufferSize.width.toFloat()
-        val bufferHeight = previewBufferSize.height.toFloat()
-        val rotatedWidth = if (swapsDimensions) bufferHeight else bufferWidth
-        val rotatedHeight = if (swapsDimensions) bufferWidth else bufferHeight
+        val sourceWidth = previewBufferSize.width.toFloat()
+        val sourceHeight = previewBufferSize.height.toFloat()
+        val orientedWidth = if (swapsDimensions) sourceHeight else sourceWidth
+        val orientedHeight = if (swapsDimensions) sourceWidth else sourceHeight
 
-        val scale = maxOf(viewWidth / rotatedWidth, viewHeight / rotatedHeight)
-        val matrix = Matrix()
-        val cx = viewWidth / 2f
-        val cy = viewHeight / 2f
+        val centerX = viewWidth / 2f
+        val centerY = viewHeight / 2f
+        val scale = maxOf(viewWidth / orientedWidth, viewHeight / orientedHeight)
 
-        // Rotate the centered buffer first, then apply the same scale on both axes.
-        matrix.setRotate(-relativeRotation.toFloat(), cx, cy)
-        matrix.postScale(scale, scale, cx, cy)
-        textureView.setTransform(matrix)
+        val transform = Matrix()
+        transform.setRotate(relativeRotation.toFloat(), centerX, centerY)
+        transform.postScale(scale, scale, centerX, centerY)
+        textureView.setTransform(transform)
     }
 
     private fun startPreviewSession() {
