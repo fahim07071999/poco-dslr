@@ -52,8 +52,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var prime50mmCrop = false
     private var dslrBokehAndHdr = true
     private var isCapturing = false
-    private var previewBufferSize = Size(1920, 1440)
-    private var backSensorOrientation = 90
+    private val previewBufferSize = Size(1920, 1440)
 
     private val burstFrames = mutableListOf<ByteArray>()
 
@@ -268,19 +267,7 @@ class MainActivity : Activity(), SensorEventListener {
                 if (facing == CameraCharacteristics.LENS_FACING_BACK) {
                     backCameraId = id
                     flashAvailable = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-                    backSensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
                     val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                    val previewSizes = map?.getOutputSizes(SurfaceTexture::class.java)
-                    if (!previewSizes.isNullOrEmpty()) {
-                        // Prefer a 4:3 stream with enough pixels for a sharp preview.
-                        // The view transform below handles portrait/landscape rotation and center-cropping.
-                        previewBufferSize = previewSizes
-                            .filter { it.width >= 1280 && it.height >= 720 }
-                            .minByOrNull {
-                                val ratioError = abs(it.width.toFloat() / it.height.toFloat() - 4f / 3f)
-                                ratioError * 100000f + abs(it.width * it.height - 1920 * 1440).toFloat()
-                            } ?: previewSizes.maxByOrNull { it.width.toLong() * it.height.toLong() }!!
-                    }
                     val sizes = map?.getOutputSizes(ImageFormat.JPEG)
                     if (!sizes.isNullOrEmpty()) {
                         maxSize = sizes.maxByOrNull { it.width.toLong() * it.height.toLong() } ?: maxSize
@@ -332,33 +319,16 @@ class MainActivity : Activity(), SensorEventListener {
     private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
         if (viewWidth <= 0 || viewHeight <= 0) return
 
-        // Restore Build #2's exact rotation calculation; only correct the
-        // TextureView's aspect ratio and center-crop after that rotation.
-        val displayDegrees = when (windowManager.defaultDisplay.rotation) {
-            Surface.ROTATION_0 -> 0
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> 0
-        }
-        val rotation = (backSensorOrientation - displayDegrees + 360) % 360
-        val rotatedWidth = if (rotation == 90 || rotation == 270) previewBufferSize.height else previewBufferSize.width
-        val rotatedHeight = if (rotation == 90 || rotation == 270) previewBufferSize.width else previewBufferSize.height
-
+        // Build #2's fixed 1920x1440 stream already has the correct orientation.
+        // Do not rotate it. Apply one uniform scale to preserve natural proportions.
+        val sourceWidth = previewBufferSize.width.toFloat()
+        val sourceHeight = previewBufferSize.height.toFloat()
         val centerX = viewWidth / 2f
         val centerY = viewHeight / 2f
-        val transform = Matrix()
-        transform.setRotate(rotation.toFloat(), centerX, centerY)
+        val scale = maxOf(viewWidth / sourceWidth, viewHeight / sourceHeight)
 
-        // TextureView maps the buffer into the view first. Undo that
-        // non-uniform mapping, then apply one uniform center-crop scale.
-        val uniformScale = maxOf(
-            viewWidth.toFloat() / rotatedWidth,
-            viewHeight.toFloat() / rotatedHeight
-        )
-        val scaleX = uniformScale * rotatedWidth / viewWidth
-        val scaleY = uniformScale * rotatedHeight / viewHeight
-        transform.postScale(scaleX, scaleY, centerX, centerY)
+        val transform = Matrix()
+        transform.setScale(scale, scale, centerX, centerY)
         textureView.setTransform(transform)
     }
 
