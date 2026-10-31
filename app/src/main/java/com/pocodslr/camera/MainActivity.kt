@@ -327,36 +327,20 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    // Keep the preview upright and preserve the camera buffer's aspect ratio.
-    // TextureView receives the sensor-oriented buffer; rotate it into display
-    // orientation, then use one uniform center-crop scale (never X/Y stretch).
+    // Preserve Build #2's camera orientation exactly. Only apply one uniform
+    // scale so TextureView does not stretch the 4:3 camera buffer to the screen.
     private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
         if (viewWidth <= 0 || viewHeight <= 0) return
 
-        val displayDegrees = when (windowManager.defaultDisplay.rotation) {
-            Surface.ROTATION_0 -> 0
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> 0
-        }
-
-        // Rear-camera orientation compensation for the current display rotation.
-        val relativeRotation = (backSensorOrientation - displayDegrees + 360) % 360
-        val swapsDimensions = relativeRotation == 90 || relativeRotation == 270
-
         val sourceWidth = previewBufferSize.width.toFloat()
         val sourceHeight = previewBufferSize.height.toFloat()
-        val orientedWidth = if (swapsDimensions) sourceHeight else sourceWidth
-        val orientedHeight = if (swapsDimensions) sourceWidth else sourceHeight
-
         val centerX = viewWidth / 2f
         val centerY = viewHeight / 2f
-        val scale = maxOf(viewWidth / orientedWidth, viewHeight / orientedHeight)
 
+        // Center-crop using the same scale on both axes; deliberately no rotation.
+        val scale = maxOf(viewWidth / sourceWidth, viewHeight / sourceHeight)
         val transform = Matrix()
-        transform.setRotate(-relativeRotation.toFloat(), centerX, centerY)
-        transform.postScale(scale, scale, centerX, centerY)
+        transform.setScale(scale, scale, centerX, centerY)
         textureView.setTransform(transform)
     }
 
