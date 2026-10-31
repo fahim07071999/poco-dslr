@@ -52,7 +52,8 @@ class MainActivity : Activity(), SensorEventListener {
     private var prime50mmCrop = false
     private var dslrBokehAndHdr = true
     private var isCapturing = false
-    private val previewBufferSize = Size(1920, 1440)
+    private var previewBufferSize = Size(1920, 1440)
+    private var backSensorOrientation = 90
 
     private val burstFrames = mutableListOf<ByteArray>()
 
@@ -267,7 +268,19 @@ class MainActivity : Activity(), SensorEventListener {
                 if (facing == CameraCharacteristics.LENS_FACING_BACK) {
                     backCameraId = id
                     flashAvailable = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                    backSensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
                     val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                    val previewSizes = map?.getOutputSizes(SurfaceTexture::class.java)
+                    if (!previewSizes.isNullOrEmpty()) {
+                        // Prefer a 4:3 stream with enough pixels for a sharp preview.
+                        // The view transform below handles portrait/landscape rotation and center-cropping.
+                        previewBufferSize = previewSizes
+                            .filter { it.width >= 1280 && it.height >= 720 }
+                            .minByOrNull {
+                                val ratioError = abs(it.width.toFloat() / it.height.toFloat() - 4f / 3f)
+                                ratioError * 100000f + abs(it.width * it.height - 1920 * 1440).toFloat()
+                            } ?: previewSizes.maxByOrNull { it.width.toLong() * it.height.toLong() }!!
+                    }
                     val sizes = map?.getOutputSizes(ImageFormat.JPEG)
                     if (!sizes.isNullOrEmpty()) {
                         maxSize = sizes.maxByOrNull { it.width.toLong() * it.height.toLong() } ?: maxSize
@@ -314,18 +327,35 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    // Preserve the camera's existing orientation; only correct aspect ratio and crop.
+    // Map the camera buffer into the TextureView using the actual sensor/display
+    // relative rotation. A single uniform scale preserves object proportions.
+    // Any excess is center-cropped; X and Y are never scaled independently.
     private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
         if (viewWidth <= 0 || viewHeight <= 0) return
 
+        val displayDegrees = when (windowManager.defaultDisplay.rotation) {
+            Surface.ROTATION_0 -> 0
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        val relativeRotation = (backSensorOrientation - displayDegrees + 360) % 360
+        val swapsDimensions = relativeRotation == 90 || relativeRotation == 270
+
         val bufferWidth = previewBufferSize.width.toFloat()
         val bufferHeight = previewBufferSize.height.toFloat()
-        // Use one uniform scale factor so people and objects keep their natural proportions.
-        // Center-crop the preview; never scale X and Y independently.
-        val scale = maxOf(viewWidth / bufferWidth, viewHeight / bufferHeight)
+        val rotatedWidth = if (swapsDimensions) bufferHeight else bufferWidth
+        val rotatedHeight = if (swapsDimensions) bufferWidth else bufferHeight
 
+        val scale = maxOf(viewWidth / rotatedWidth, viewHeight / rotatedHeight)
         val matrix = Matrix()
-        matrix.setScale(scale, scale, viewWidth / 2f, viewHeight / 2f)
+        val cx = viewWidth / 2f
+        val cy = viewHeight / 2f
+
+        // Rotate the centered buffer first, then apply the same scale on both axes.
+        matrix.setRotate(relativeRotation.toFloat(), cx, cy)
+        matrix.postScale(scale, scale, cx, cy)
         textureView.setTransform(matrix)
     }
 
