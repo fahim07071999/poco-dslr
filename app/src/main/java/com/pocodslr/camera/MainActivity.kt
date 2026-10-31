@@ -332,15 +332,33 @@ class MainActivity : Activity(), SensorEventListener {
     private fun configurePreviewTransform(viewWidth: Int, viewHeight: Int) {
         if (viewWidth <= 0 || viewHeight <= 0) return
 
-        val sourceWidth = previewBufferSize.width.toFloat()
-        val sourceHeight = previewBufferSize.height.toFloat()
+        // Restore Build #2's exact rotation calculation; only correct the
+        // TextureView's aspect ratio and center-crop after that rotation.
+        val displayDegrees = when (windowManager.defaultDisplay.rotation) {
+            Surface.ROTATION_0 -> 0
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        val rotation = (backSensorOrientation - displayDegrees + 360) % 360
+        val rotatedWidth = if (rotation == 90 || rotation == 270) previewBufferSize.height else previewBufferSize.width
+        val rotatedHeight = if (rotation == 90 || rotation == 270) previewBufferSize.width else previewBufferSize.height
+
         val centerX = viewWidth / 2f
         val centerY = viewHeight / 2f
-
-        // Center-crop using the same scale on both axes; deliberately no rotation.
-        val scale = maxOf(viewWidth / sourceWidth, viewHeight / sourceHeight)
         val transform = Matrix()
-        transform.setScale(scale, scale, centerX, centerY)
+        transform.setRotate(rotation.toFloat(), centerX, centerY)
+
+        // TextureView maps the buffer into the view first. Undo that
+        // non-uniform mapping, then apply one uniform center-crop scale.
+        val uniformScale = maxOf(
+            viewWidth.toFloat() / rotatedWidth,
+            viewHeight.toFloat() / rotatedHeight
+        )
+        val scaleX = uniformScale * rotatedWidth / viewWidth
+        val scaleY = uniformScale * rotatedHeight / viewHeight
+        transform.postScale(scaleX, scaleY, centerX, centerY)
         textureView.setTransform(transform)
     }
 
