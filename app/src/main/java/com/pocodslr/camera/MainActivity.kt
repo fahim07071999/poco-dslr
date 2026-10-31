@@ -355,7 +355,7 @@ class MainActivity : Activity(), SensorEventListener {
         val scale = maxOf(viewWidth / orientedWidth, viewHeight / orientedHeight)
 
         val transform = Matrix()
-        transform.setRotate(relativeRotation.toFloat(), centerX, centerY)
+        transform.setRotate(-relativeRotation.toFloat(), centerX, centerY)
         transform.postScale(scale, scale, centerX, centerY)
         textureView.setTransform(transform)
     }
