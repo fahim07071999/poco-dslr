@@ -354,7 +354,7 @@ class MainActivity : Activity(), SensorEventListener {
         val cy = viewHeight / 2f
 
         // Rotate the centered buffer first, then apply the same scale on both axes.
-        matrix.setRotate(relativeRotation.toFloat(), cx, cy)
+        matrix.setRotate(-relativeRotation.toFloat(), cx, cy)
         matrix.postScale(scale, scale, cx, cy)
         textureView.setTransform(matrix)
     }
